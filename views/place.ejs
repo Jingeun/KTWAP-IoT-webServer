@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>화재 및 질식 예방 IoT Sensor Server</title>
+    <link href="/stylesheets/application.min.css" rel="stylesheet">
+    <!-- as of IE9 cannot parse css files with more that 4K classes separating in two files -->
+    <!--[if IE 9]>
+        <link href="css/application-ie9-part2.css" rel="stylesheet">
+    <![endif]-->
+    <link rel="shortcut icon" href="img/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script>
+        /* yeah we need this empty stylesheet here. It's cool chrome & chromium fix
+         chrome fix https://code.google.com/p/chromium/issues/detail?id=167083
+         https://code.google.com/p/chromium/issues/detail?id=332189
+         */
+    </script>
+    <script src='/javascripts/socket.io.js'></script>
+    <style>
+        #rtDisplay{
+            width: 100%;
+            border: silver 1px;
+            border-radius: 1%;
+            box-shadow: #111 0px 1px 5px;
+        }
+        .rickshaw_legend .line{
+            display: inline !important;
+        }
+        #displaySec{
+            position: relative;
+           /* border: silver 1px;
+            border-radius: 1%;
+            box-shadow: #111 0px 1px 5px;*/
+        }
+        #displayInfo{
+            height: 35px;
+            width: 100%;
+            background: rgba(0,0,0,0.25);
+            position: absolute;
+            border-radius: 3%;
+            /* border: 1px solid silver; */
+            top: 0;
+            padding: 8px;
+        }
+        #disInfoName{
+            color:white;
+            font-weight: bolder;
+        }
+        #disInfoTime{
+            color:white;
+            float: right;
+        }
+    </style>
+</head>
+<body class='nav-collapsed'>
+<!--
+  Main sidebar seen on the left. may be static or collapsing depending on selected state.
+
+    * Collapsing - navigation automatically collapse when mouse leaves it and expand when enters.
+    * Static - stays always open.
+-->
+
+<!-- This is the white navigation bar seen on the top. A bit enhanced BS navbar. See .page-controls in _base.scss. -->
+<nav class="page-controls navbar navbar-default">
+    <div class="container-fluid">
+        <!-- .navbar-header contains links seen on xs & sm screens -->
+        <div class="navbar-header">
+            
+            <!-- xs & sm screen logo -->
+            <a class="navbar-brand visible-xs" href="main">
+                <i class="fa fa-circle text-gray mr-n-sm"></i>
+                <i class="fa fa-circle text-warning"></i>
+                &nbsp;
+                화재 및 질식 예방 IoT Sensor Server
+                &nbsp;
+                <i class="fa fa-circle text-warning mr-n-sm"></i>
+                <i class="fa fa-circle text-gray"></i>
+            </a>
+        </div>
+
+        <!-- this part is hidden for xs screens -->
+        <div class="collapse navbar-collapse">
+            <!-- search form! link it to your search server -->
+            <div class='navbar-header'>
+            <div class="navbar-brand" style="width:60px">
+                <a href='/' ><img src="/images/KT.png" style="width:100%"></a>
+            </div>
+            </div>
+            <!--  헤더 검색부분
+            <form class="navbar-form navbar-left" role="search">
+                <div class="form-group">
+                    <div class="input-group input-group-no-border">
+                        <span class="input-group-addon">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input class="form-control" type="text" placeholder="Search Dashboard">
+                    </div>
+                </div>
+            </form>
+            -->
+            <ul class="nav navbar-nav navbar-right" style="margin-right:100px;">
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                        <strong><%=id %></strong>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#"><i class="glyphicon glyphicon-user"></i> &nbsp; My Account</a></li>
+                        <li class="divider"></li>
+                        <li><a href="logout"><i class="fa fa-sign-out"></i> &nbsp; Log Out</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+
+
+<div class="content-wrap">
+    <!-- main page content. the place to put widgets in. usually consists of .row > .col-md-* > .widget.  -->
+    <main id="content" class="content" role="main">
+        <ol class="breadcrumb">
+            <li>Sensor Monitoring</li>
+            <li class="active"><%=dev_no%></li>
+        </ol>
+        <h2 class="page-title"><span class="fw-semi-bold"><%=dev_name%></br><h4> - </span><%=dev_address1%> <%=dev_address2%> <%=dev_address3%> <%=dev_address4%></h4></h2>
+        <div class="row">
+            
+            <div class="col-md-6 col-lg-6">
+                <section class="widget">
+                    <header>
+                        <h4>
+                            실시간 <span class="fw-semi-bold">센서 감지량</span>
+                        </h4>
+                        <div class="widget-controls">
+                            <a data-widgster="expand" title="Expand" href="#"><i class="glyphicon glyphicon-chevron-up"></i></a>
+                            <a data-widgster="collapse" title="Collapse" href="#"><i class="glyphicon glyphicon-chevron-down"></i></a>
+                            <!-- <a href="#" data-widgster="close"><i class="glyphicon glyphicon-remove"></i></a> -->
+                        </div>
+                    </header>
+                    <div class="widget-body">
+                        <div id='test'></div>
+                        <div id="rickshaw" class="chart-overflow-bottom"></div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-md-6 col-lg-6">
+
+                <section class='widget'>
+                    <header>
+                        <h4>실시간 <span class="fw-semi-bold">현황</span></h4>
+                    </header>
+                    <div class="widget-controls">
+                            <a data-widgster="expand" title="Expand" href="#"><i class="glyphicon glyphicon-chevron-up"></i></a>
+                            <a data-widgster="collapse" title="Collapse" href="#"><i class="glyphicon glyphicon-chevron-down"></i></a>
+                            <!-- <a href="#" data-widgster="close"><i class="glyphicon glyphicon-remove"></i></a> -->
+                    </div>
+                    <div class="widget-body">
+                        <div id="displaySec">
+                            <img src="/images/no-image.png" id='rtDisplay'>
+                           <!--  <canvas id='rtDisplay'></canvas> -->
+                            <div id='displayInfo'>
+                                <span id='disInfoName'><%=dev_no%></span>
+                                <span id='disInfoTime'><span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </section>
+
+            </div>
+        </div>
+        
+    </main>
+</div>
+<!-- The Loader. Is shown when pjax happens -->
+<div class="loader-wrap hiding hide">
+    <i class="fa fa-circle-o-notch fa-spin-fast"></i>
+</div>
+
+<!-- common libraries. required for every page-->
+<script src="/javascripts/jquery.min.js"></script>
+<script src="/javascripts/jquery.pjax.js"></script>
+<script src="/javascripts/transition.js"></script>
+<script src="/javascripts/collapse.js"></script>
+<script src="/javascripts/dropdown.js"></script>
+<script src="/javascripts/button.js"></script>
+<script src="/javascripts/tooltip.js"></script>
+<script src="/javascripts/alert.js"></script>
+<script src="/javascripts/jquery.slimscroll.min.js"></script>
+<script src="/javascripts/widgster.js"></script>
+<!-- <script src="/javascripts/pace.js" data-pace-options='{ "target": ".content-wrap", "ghostTime": 1000 }'></script> -->
+<script src="/javascripts/jquery.touchSwipe.js"></script>
+
+<!-- common app js -->
+<script src="/javascripts/settings.js"></script>
+<script src="/javascripts/app.js"></script>
+
+<!-- page specific libs -->
+<script src="/javascripts/jquery.sparkline/index.js"></script>
+<script src="/javascripts/d3.min.js"></script>
+<script src="/javascripts/rickshaw.min.js"></script>
+<script src="/javascripts/raphael-min.js"></script>
+<script src="/javascripts/jquery.flot.animator.min.js"></script>
+<script src="/javascripts/jquery.flot.js"></script>
+<script src="/javascripts/jquery.flot.orderBars.js"></script>
+<script src="/javascripts/jquery.flot.selection.js"></script>
+<script src="/javascripts/jquery.flot.time.js"></script>
+
+<script src="/javascripts/nv.d3.min.js"></script>
+<script src="/javascripts/morris.min.js"></script>
+<!-- <script src="vendor/jquery.easy-pie-chart/dist/jquery.easypiechart.min.js"></script> -->
+
+<!-- page specific js -->
+<script src="/javascripts/charts.js"></script>
+<script >
+    
+    var legend;
+    $(function(){
+        var graph;
+        
+        var seriesData = [ [], [],[] ];
+        var cnt = 0;
+        var max = 15;
+
+        function initRickshaw(){
+            "use strict";
+
+            
+            // var random = new Rickshaw.Fixtures.RandomData(30);
+            // var kts = [];
+            // for (var i = 0; i < 30; i++) {
+            //     random.addData(seriesData);
+            //     console.log("DATA : ", seriesData);
+            //     //kts[i] = {x : i, y:50+i};
+            // }
+	    var sensorDevice = "<%=dev_no%>";
+            var sensorName = "황화수소";
+	    if(sensorDevice=="KT000002") {
+		sensorName = "일산화탄소";
+	    }
+		
+            graph = new Rickshaw.Graph( {
+                element: document.getElementById("rickshaw"),
+                height: 400,
+               // renderer: 'line',
+               renderer: 'line',
+                stroke: true,
+                series: [
+                    {
+                        color: '#cc6600',
+                        data: seriesData[0],
+                        name: '온도'
+                    }, {
+                        color: '#6699cc',
+                        data: seriesData[1],
+                        name: sensorName 
+                    },{
+                        color: '#99ccff',
+                        data: seriesData[2],
+                        // data: kts,
+                        name: '메탄'
+                    }
+                ]
+            } );
+            
+            function onResize(){
+                var $chart = $('#rickshaw');
+                graph.configure({
+                    width: $chart.width(),
+                    height: 400
+                });
+                
+                graph.render();
+
+                $chart.find('svg').css({height: '400px'});
+            }
+
+            SingApp.onResize(onResize);
+            onResize();
+
+
+            var hoverDetail = new Rickshaw.Graph.HoverDetail( {
+                graph: graph,
+                xFormatter: function(x) {
+                    return new Date().toString();
+                }
+            } );
+
+
+            var xAxis = new Rickshaw.Graph.Axis.Time({
+                graph: graph
+            });
+
+            xAxis.render();
+
+            var yAxis = new Rickshaw.Graph.Axis.Y({
+                graph: graph
+            });
+           
+            yAxis.render();
+
+
+             legend = new Rickshaw.Graph.Legend({
+                graph: graph,
+                element: document.querySelector('#test')
+            });
+
+            legend.render();
+            
+            setInterval( function() {
+                // random.removeData(seriesData);
+                // random.addData(seriesData);
+               // console.log("data : ", seriesData);
+                graph.update();
+
+            }, 100 );
+        }
+        function pageLoad(){
+            $('.widget').widgster();
+            $('.sparkline').each(function(){
+                // $(this).data()
+                $(this).sparkline('html', $(this).data());
+            });
+
+        
+            initRickshaw();
+        }
+        pageLoad();
+        SingApp.onPageLoad(pageLoad);
+
+        var socket = io.connect("http://ktwap.kro.kr:9900");
+        var dev_no = "<%=dev_no%>";
+        socket.on('connect', function(){
+            console.log("성공");
+            socket.emit("browser", null);
+            socket.on("allow", function(){
+                console.log("response allow");
+                socket.emit("detail", {place_no : dev_no});
+
+                socket.on("detail_device_info",function(data){
+                    // console.log("cnt : ", seriesData);
+		    if(dev_no=="KT000002")
+			data.dev_co = data.dev_co/2 - 7;
+                    if(cnt < max){
+                        seriesData[0].push({x:cnt, y:Number(data.dev_temp)});
+                        seriesData[1].push({x:cnt, y:Number(data.dev_h2s)});
+                        seriesData[2].push({x:cnt, y:Number(data.dev_co)});
+                    }else{
+                        seriesData[0].shift();    
+                        seriesData[1].shift();
+                        seriesData[2].shift();
+                        seriesData[0].push({x:cnt, y:Number(data.dev_temp)});
+                        seriesData[1].push({x:cnt, y:Number(data.dev_h2s)});
+                        seriesData[2].push({x:cnt, y:Number(data.dev_co)});
+                    }
+                    var target = legend.element;
+                    var list = target.getElementsByClassName("label");
+                    var temp_lebel = list[2];
+                    var h2s_label = list[1];
+                    var co_label = list[0];
+		
+                    temp_lebel.innerText = "온도 : "+data.dev_temp;
+                    h2s_label.innerText = "황화수소 : "+data.dev_h2s;
+		    if(dev_no=="KT000002"){
+			h2s_label.innerText = "일산화탄소 : "+data.dev_h2s;
+		    }
+                    co_label.innerText = "메탄 : "+data.dev_co;
+                    
+                    // $("#temp_span").empty();
+                    // $("#h2s_span").empty();
+                    // $("#co_span").empty();
+                    
+                    cnt++;
+
+                });
+                socket.on("real_time_image", function(data){
+                   // console.log("이미지 받음 : ");
+                    // var canvas = document.getElementById('rtDisplay');
+                    // var context = canvas.getContext('2d');
+                    // var img = new Image();
+
+                    // img.onload = function() {
+                    //     
+                    //     context.drawImage(this, 0, 0, canvas.width, canvas.height);
+                    //     $("#disInfoTime").empty();
+                    //     // $("#disInfoTime").append(date.toLocaleTimeString());
+                    //     $("#disInfoTime").append(data.date);
+                    // }
+                    $("#disInfoTime").empty();
+                    $("#disInfoTime").append(data.date);
+                    var rtDisplay = document.getElementById("rtDisplay");
+                    rtDisplay.src = "data:image/jpg;base64,"+data.base64;
+                   // img.src = "data:image/gif;base64,"+data.base64;
+                });
+            });
+         });
+    });
+
+    
+
+</script>
+</body>
+</html>

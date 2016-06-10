@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+  	<section>
+  		<article>
+  			<h1>KT&WAP Collaboraton</h1>
+  		</article>
+    	<article>
+    		<form id='loginForm' action="/main" method="post">
+    			<input type='text' name='id'>
+    			<input type='password' name='pwd'>
+    			<input type='submit'>
+    		</form>
+    	</article>
+    </section>
+  </body>
+</html>
